@@ -13,8 +13,11 @@ class Node(object):
   def __init__(self, comment):
     self.comment = comment
     self.score = 0.
-    self.leaf_count = 0
+    self.tree_size = 0
     self.children = []
+    
+  def __repr__(self):
+    return "[{:.3f},\t{},\t{},\t{}]".format(self.score, self.comment.created_utc, self.comment.author, self.comment.body[:30])
 
 
 class CommentTree(object):
@@ -22,7 +25,8 @@ class CommentTree(object):
   def __init__(self, comments):
     self._comments = deepcopy(comments)
     self._tree = {}
-    self._root_id = self._comments[-1].id
+    self._root_id = self._comments[-1].id  # last "comment" is actually thread root
+    self._root_created_utc = self._comments[-1].created_utc
     self.populate()
       
      
@@ -30,9 +34,12 @@ class CommentTree(object):
     comments = deepcopy(self._comments)
     
     root = comments.pop()
+    self._tree = {}
     self._tree[root.id] = Node(root)  # set thread root
-  
+    
+    # loop through the timeline of the thread
     while len(comments)>0:
+    
       # clear terminal
       if prompt: os.system('cls' if os.name == 'nt' else 'clear')
       
@@ -42,15 +49,14 @@ class CommentTree(object):
       self._tree[com.id] = node
       self._tree[com.parent_id].children.append(node)
       
-      # percolate leaf count if more than a comment chain
+      # traverse up tree and increment tree size counts
       parent_id = com.parent_id
-      if self._tree[parent_id].leaf_count > 0:
-        while parent_id != None:
-          self._tree[parent_id].leaf_count += 1
-          parent_id = self._tree[parent_id].comment.parent_id
-      else:
-        self._tree[parent_id].leaf_count = 1
+      while parent_id != None:
+        parent = self._tree[parent_id]
+        parent.tree_size += 1
+        parent_id = parent.comment.parent_id
       
+      # update all scores
       self._calc_scores(com.created_utc)
       
       if prompt:
@@ -60,24 +66,32 @@ class CommentTree(object):
   
   def _calc_scores(self, current_utc):
     for _id, node in self._tree.items():
-      if node.leaf_count == 0: continue
+      if node.tree_size == 0: continue
       
       dt = (current_utc - node.comment.created_utc) / 3600
-      node.score = np.exp( np.log( node.leaf_count ) / dt )
+      node.score = node.tree_size / dt
   
   
   def show(self, hide_low=False):
-    node_fmt_str = "({}, {})"
-    node_fmt = lambda n: node_fmt_str.format(n.comment.id, n.score)
+    node_fmt_str = "-->[{}, {}, {}]"
+    node_fmt = lambda n: node_fmt_str.format(round(n.score,3),
+                                             int((n.comment.created_utc-self._root_created_utc)/60),
+                                             n.comment.author)
     
     def _helper(indent_level, root):
       for child in root.children:
         if hide_low and child.score>0: continue
         
         print indent_level*"\t" + node_fmt(child)
+        print indent_level*"\t" + "   " + child.comment.body[:30]
         _helper(indent_level+1, child)
     
     if len(self._tree)>0: _helper(0, self._tree[self._root_id])
+    
+  
+  def get_top(self, n = -1):
+    top = sorted(self._tree.values(), key = lambda n: -n.score)
+    return top[:n]
     
       
 
@@ -91,7 +105,11 @@ if __name__=="__main__":
   
   
   tree = CommentTree(comments)
-  tree.populate(prompt=True)
+  tree.show()
+  #tree.populate(prompt=True)
+  
+  print
+  pprint( tree.get_top(20) )
   
     
     

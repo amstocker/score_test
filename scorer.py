@@ -7,6 +7,8 @@ import numpy as np
 from sys import argv
 from scraper import CommentLite
 
+
+# represents a comment (node) on the comment tree
 class Node(object):
   def __init__(self, comment):
     self.comment = comment
@@ -53,7 +55,7 @@ class CommentTree(object):
       
       if prompt:
         self.show()
-        raw_input("Enter to continue...")
+        raw_input("\n\n\n\n\nEnter to continue...")
   
   
   def _calc_scores(self, current_utc):
@@ -65,8 +67,8 @@ class CommentTree(object):
   
   
   def show(self, hide_low=False):
-    node_fmt_str = "({})"
-    node_fmt = lambda n: node_fmt_str.format(n.score)
+    node_fmt_str = "({}, {})"
+    node_fmt = lambda n: node_fmt_str.format(n.comment.id, n.score)
     
     def _helper(indent_level, root):
       for child in root.children:
@@ -89,7 +91,7 @@ if __name__=="__main__":
   
   
   tree = CommentTree(comments)
-  tree.show()
+  tree.populate(prompt=True)
   
     
     

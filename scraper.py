@@ -12,7 +12,10 @@ class CommentLite(object):
     c = praw_comment_obj
     
     if c:
-      self.author = c.author.name
+      if c.author:      
+        self.author = c.author.name
+      else:
+        self.author = "[deleted]"
       self.body = c.body
       self.id = c.name
       self.created_utc = c.created_utc

@@ -12,12 +12,13 @@ from scraper import CommentLite
 class Node(object):
   def __init__(self, comment):
     self.comment = comment
+    self.depth = 0
     self.score = 0.
     self.tree_size = 0
     self.children = []
     
   def __repr__(self):
-    return "[{:.3f},\t{},\t{},\t{}]".format(self.score, self.comment.created_utc, self.comment.author, self.comment.body[:30])
+    return "[{:.3f},\t{},\t{},\t{},\t{}]".format(self.score, self.comment.created_utc, self.depth, self.comment.author, self.comment.body[:30])
 
 
 class CommentTree(object):
@@ -49,12 +50,18 @@ class CommentTree(object):
       self._tree[com.id] = node
       self._tree[com.parent_id].children.append(node)
       
+      # trace depth of comment relative to thread root
+      depth = 0
+      
       # traverse up tree and increment tree size counts
       parent_id = com.parent_id
       while parent_id != None:
+        depth += 1
         parent = self._tree[parent_id]
         parent.tree_size += 1
         parent_id = parent.comment.parent_id
+      
+      node.depth = depth
       
       # update all scores
       self._calc_scores(com.created_utc)
@@ -73,10 +80,8 @@ class CommentTree(object):
   
   
   def show(self, hide_low=False):
-    node_fmt_str = "-->[{}, {}, {}]"
-    node_fmt = lambda n: node_fmt_str.format(round(n.score,3),
-                                             int((n.comment.created_utc-self._root_created_utc)/60),
-                                             n.comment.author)
+    dt_min = lambda n: int((n.comment.created_utc-self._root_created_utc)/60)
+    node_fmt = lambda n: "-->[{:.3f}, {}, {}]".format(n.score, dt_min(n), n.comment.author)
     
     def _helper(indent_level, root):
       for child in root.children:

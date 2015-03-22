@@ -11,7 +11,7 @@ from scraper import CommentLite
 # represents a comment (node) on the comment tree
 class Node(object):
   def __init__(self, comment):
-    self.comment = comment
+    self.comment = comment  # original reddit comment
     self.depth = 0
     self.score = 0.
     self.tree_size = 0
@@ -19,6 +19,7 @@ class Node(object):
     
   def __repr__(self):
     return "[{:.3f},\t{},\t{},\t{},\t{}]".format(self.score, self.comment.created_utc, self.depth, self.comment.author, self.comment.body[:30])
+
 
 
 class CommentTree(object):
@@ -29,7 +30,10 @@ class CommentTree(object):
     self._root_id = self._comments[-1].id  # last "comment" is actually thread root
     self._root_created_utc = self._comments[-1].created_utc
     self.populate()
-      
+    
+  @property
+  def id(self):
+    return self._root_id
      
   def populate(self, prompt=False):
     comments = deepcopy(self._comments)
@@ -98,23 +102,57 @@ class CommentTree(object):
     top = sorted(self._tree.values(), key = lambda n: -n.score)
     return top[:n]
     
-      
+  def flattened(self):
+    return self._tree.values()
+    
+  def rscore_sort(self):
+    return sorted(self._tree.values(), key = lambda n: -n.comment.reddit_score)
+    
+  ## calculate correlation between reddit comment scores
+  ##  and bigtree scores
+  def score_correlation(self):
+    flat = self.flattened()
+    
+    # get array of reddit scores and array of bigtree scores
+    tscores = np.array( [c.score for c in flat] )
+    rscores = np.array( [c.comment.reddit_score for c in flat] )
+    
+    # mask leaf posts
+    mask = tscores>0
+    tscores = tscores[mask]
+    rscores = rscores[mask]
+    
+    # calc correlation
+    corrmtx = np.corrcoef(tscores, rscores)
+    
+    # get correlation btw score arrays from correlation matrix
+    #  (matrix is symmetric so this could be corrmtx[1,0], doesn't matter)
+    return corrmtx[0,1]
+    
+    
+  def scores(self):
+    flat = self.rscore_sort()
+    
+    # get array of reddit scores and array of bigtree scores
+    tscores = np.array( [c.score for c in flat] )
+    rscores = np.array( [c.comment.reddit_score for c in flat] ).astype(float)
+    
+    return tscores, rscores
 
 
 
-if __name__=="__main__":
-  thread_id = argv[1]
+def tree_from_id(thread_id):
   pklfile = "{}.pkl".format(thread_id)
   
   comments = pickle.load( open(pklfile,'rb') )
   
-  
-  tree = CommentTree(comments)
-  tree.show()
-  #tree.populate(prompt=True)
-  
-  print
-  pprint( tree.get_top(20) )
+  return CommentTree(comments)
+
+
+
+if __name__=="__main__":
+  tree = tree_from_id(argv[1])
+  print tree.score_correlation()
   
     
     

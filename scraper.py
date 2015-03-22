@@ -20,12 +20,14 @@ class CommentLite(object):
       self.id = c.name
       self.created_utc = c.created_utc
       self.parent_id = c.parent_id
+      self.reddit_score = c.score
     else:
       self.author = None
       self.body = None
       self.id = None
       self.created_utc = None
       self.parent_id = None
+      self.reddit_score = None
       
     
   def as_dict(self):
@@ -38,6 +40,7 @@ class CommentLite(object):
     com.body = thread.title
     com.id = thread.name
     com.created_utc = thread.created_utc
+    com.reddit_score = thread.score
     return com
 
 
@@ -60,18 +63,25 @@ prep = lambda comments: sort(lite(filt(flat(comments))))
 
 
 
-if __name__=="__main__":
-  R = praw.Reddit('Testing for comment ranking algorithm research -- amstocker@dons.usfca.edu')
-  
-  thread_id = argv[1]
-  thread = R.get_submission(submission_id=thread_id)
-  
+def get_reddit_client():
+  return praw.Reddit('Testing for comment ranking algorithm research -- amstocker@dons.usfca.edu')
+
+
+def pkl_thread(thread):
   comments = prep(thread.comments)
   comments = sort(comments + [CommentLite.fromthread(thread)])  # add thread root as comment
   
-  pklfile = "{}.pkl".format(thread_id)
+  pklfile = "{}.pkl".format(thread.id)
   
   print "dumping comments into {} ...".format(pklfile)
   pickle.dump( comments, open(pklfile,'wb') )
+
+
+if __name__=="__main__":
+  R = get_reddit_client()
+  
+  thread_id = argv[1]
+  thread = R.get_submission(submission_id=thread_id)
+  pkl_thread(thread)
   
   

@@ -4,6 +4,7 @@ from pprint import pprint
 
 import os
 import numpy as np
+from scipy.stats import pearsonr
 from sys import argv
 from scraper import CommentLite
 
@@ -96,42 +97,32 @@ class CommentTree(object):
         _helper(indent_level+1, child)
     
     if len(self._tree)>0: _helper(0, self._tree[self._root_id])
-    
   
-  def get_top(self, n = -1):
-    top = sorted(self._tree.values(), key = lambda n: -n.score)
-    return top[:n]
     
   def flattened(self):
     return self._tree.values()
+  
+  def get_top(self, n = -1):
+    top = sorted(self.flattened(), key = lambda n: -n.score)
+    return top[:n]
     
   def rscore_sort(self):
-    return sorted(self._tree.values(), key = lambda n: -n.comment.reddit_score)
-    
+    return sorted(self.flattened(), key = lambda n: -n.comment.reddit_score)
+  
+  
   ## calculate correlation between reddit comment scores
   ##  and bigtree scores
   def score_correlation(self):
-    flat = self.flattened()
+    tscores, rscores = self.scores()
     
-    # get array of reddit scores and array of bigtree scores
-    tscores = np.array( [c.score for c in flat] )
-    rscores = np.array( [c.comment.reddit_score for c in flat] )
+    # calc correlation, p-value
+    corr = pearsonr(tscores, rscores)
     
-    # mask leaf posts
-    mask = tscores>0
-    tscores = tscores[mask]
-    rscores = rscores[mask]
-    
-    # calc correlation
-    corrmtx = np.corrcoef(tscores, rscores)
-    
-    # get correlation btw score arrays from correlation matrix
-    #  (matrix is symmetric so this could be corrmtx[1,0], doesn't matter)
-    return corrmtx[0,1]
+    return corr
     
     
   def scores(self):
-    flat = self.rscore_sort()
+    flat = self.flattened()
     
     # get array of reddit scores and array of bigtree scores
     tscores = np.array( [c.score for c in flat] )

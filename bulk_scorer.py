@@ -5,16 +5,25 @@ import os
 import numpy as np
 from scorer import tree_from_id
 
+from time import time
+
+
 # get file name/extension
 file_ext = lambda f: f.split('.')
 
 
 def score_all(submission_ids):
-  return [tree_from_id(t_id) for t_id in submission_ids]
+  trees = [tree_from_id(t_id) for t_id in submission_ids]
+  
+  # update scores to current time
+  cur = time()
+  [t._calc_scores(cur) for t in trees]
+  
+  return trees 
   
 
 
-def corr_all(trees):
+def correlation_all(trees):
   from scipy.stats import pearsonr as corr
   
   tscores_all = np.array([])
@@ -22,16 +31,6 @@ def corr_all(trees):
   
   for tree in trees:
     tscores, rscores = tree.scores()
-    
-    # mask out bigtree leaf nodes (which will have a score of zero),
-    #  because leaves don't take into account upvotes in bigtree model
-    mask = tscores>0
-    tscores = tscores[mask]
-    rscores = rscores[mask]
-    
-    # normalize by max score
-    tscores /= np.max(tscores)
-    rscores /= np.max(rscores)
     
     tscores_all = np.concatenate(( tscores_all, tscores ))
     rscores_all = np.concatenate(( rscores_all, rscores ))
@@ -53,11 +52,12 @@ if __name__=="__main__":
   
   trees = score_all(submission_ids)
   
-  # average correlation of each scoring methods per thread
-  print np.average([t.score_correlation() for t in trees])
+  
+  # individual correlation of each scoring methods per thread
+  indiv = filter(lambda t: (not np.isnan(t[0])), [t.score_correlation() for t in trees])
   
   # correlation of scoring methods for all scraped threads
-  print corr_all(trees)
+  print correlation_all(trees)
   
   
   

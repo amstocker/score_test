@@ -131,18 +131,18 @@ class CommentTree(object):
     return tscores, rscores
 
 
-
-def tree_from_id(thread_id):
-  pklfile = "{}.pkl".format(thread_id)
-  
-  comments = pickle.load( open(pklfile,'rb') )
-  
-  return CommentTree(comments)
+  @staticmethod
+  def from_id(thread_id):
+    pklfile = "{}.pkl".format(thread_id)
+    
+    comments = pickle.load( open(pklfile,'rb') )
+    
+    return CommentTree(comments)
 
 
 
 if __name__=="__main__":
-  tree = tree_from_id(argv[1])
+  tree = CommentTree.from_id(argv[1])
   print tree.score_correlation()
   
     

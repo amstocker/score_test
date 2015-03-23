@@ -3,17 +3,13 @@ Parse comment trees from all pickled threads in cwd
 """
 import os
 import numpy as np
-from scorer import tree_from_id
+from scorer import CommentTree
 
 from time import time
 
 
-# get file name/extension
-file_ext = lambda f: f.split('.')
-
-
 def score_all(submission_ids):
-  trees = [tree_from_id(t_id) for t_id in submission_ids]
+  trees = [CommentTree.from_id(t_id) for t_id in submission_ids]
   
   # update scores to current time
   cur = time()
@@ -40,6 +36,8 @@ def correlation_all(trees):
   
 
 if __name__=="__main__":
+
+  file_ext = lambda f: f.split('.')
   
   # get pickle files from current directory
   pkls = filter(
